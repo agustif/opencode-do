@@ -1,6 +1,8 @@
 # OpenCode on Durable Objects
 
-A proof-of-concept demonstrating [OpenCode's](https://opencode.ai) remote server capabilities running on Cloudflare Workers + Durable Objects.
+A fork of [southpolesteve/opencode-do](https://github.com/southpolesteve/opencode-do) with Effect v4 refactor and modular architecture.
+
+This proof-of-concept demonstrates [OpenCode's](https://opencode.ai) remote server capabilities running on Cloudflare Workers + Durable Objects.
 
 ## What is this?
 
@@ -10,6 +12,55 @@ This project showcases how OpenCode's `attach` feature enables connecting the Op
 - **Pay only when active** - DOs hibernate when idle, no always-on server costs
 - **Global edge deployment** - Low latency from anywhere in the world
 - **Zero infrastructure management** - Cloudflare handles everything
+
+## Changes from upstream
+
+- **Effect v4** - Modular architecture with ServiceMap, Schema validation, and Effect-powered handlers
+- **Streaming** - Proper SSE streaming with delta parsing for Workers AI
+- **Rate limiting** - SQLite-backed rate limits (20 req/hour)
+- **Global events** - Cross-session event broadcast via GlobalEventDO
+- **Tests** - Vitest integration tests
+- **PRODUCT_PLAN.md** - Detailed architecture and roadmap
+
+## Project Structure
+
+```
+src/opencode-server-effect/
+├── contracts.ts       # Effect/Schema validation types
+├── defaults.ts        # Default model/provider configs
+├── global-event.ts   # Global event Durable Object
+├── homepage.ts       # Existential homepage with CF geo
+├── ids.ts            # Sortable message/session ID generation
+├── responses.ts      # HTTP response helpers
+├── services.ts       # Effect v4 ServiceMap definitions
+├── session-do.ts    # Session Durable Object (SSE, persistence)
+├── sse.ts           # SSE formatting & broadcast
+├── worker-app.ts    # Effect-powered HTTP routes
+└── index.ts         # Worker entry point
+```
+
+### Effect v4 Patterns
+
+**Services** - Type-safe dependencies via ServiceMap:
+```ts
+export class WorkerBindings extends ServiceMap.Service<WorkerBindings, Env>()(...) {}
+export class SessionRuntime extends ServiceMap.Service<SessionRuntime, SessionRuntimeShape>()(...) {}
+```
+
+**Schema validation** - Parse & validate incoming requests:
+```ts
+export const PromptRequest = Schema.Struct({
+  parts: Schema.Array(TextPromptPart),
+  model: Schema.optionalKey(Schema.Struct({ providerID: Schema.String, modelID: Schema.String })),
+})
+```
+
+**Effect handlers** - Composable request handlers:
+```ts
+HttpRouter.route("GET", "/", Effect.gen(function* () {
+  return okHtml(renderHomepage(yield* HttpServerRequest.toWeb(yield* HttpServerRequest.HttpServerRequest)))
+}))
+```
 
 ## Demo
 
