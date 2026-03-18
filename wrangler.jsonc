@@ -17,6 +17,10 @@
       {
         "name": "SESSION",
         "class_name": "SessionDO"
+      },
+      {
+        "name": "GLOBAL_EVENT",
+        "class_name": "GlobalEventDO"
       }
     ]
   },
@@ -26,6 +30,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["SessionDO"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["GlobalEventDO"]
     }
   ]
 }

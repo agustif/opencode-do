@@ -116,7 +116,11 @@ Messages are stored in Durable Object SQLite storage, which persists across hibe
 
 ## Future Possibilities
 
-This POC demonstrates the basics, but the architecture supports much more. Here's what could be added:
+This section is intentionally high level. The current product architecture plan lives in [PRODUCT_PLAN.md](./PRODUCT_PLAN.md), and the baseline verification flow lives in [docs/DEPLOYMENT_SMOKE_CHECKLIST.md](./docs/DEPLOYMENT_SMOKE_CHECKLIST.md).
+
+This POC demonstrates the basics, but the architecture supports much more. One important constraint from upstream OpenCode is that `attach` makes the client a remote UI, not a local tool executor. That means tool calls must be solved server-side or through a separate companion process, not by assuming the stock attached TUI will run them locally.
+
+Here's what could be added:
 
 ### File System Access
 
@@ -135,7 +139,7 @@ For running arbitrary code safely, [Dynamic Worker Loaders](https://developers.c
 - Spawn isolated Workers on-demand to execute untrusted code
 - Millisecond startup time (much faster than containers)
 - Full sandboxing: block network access, provide custom bindings
-- Perfect for Bash-like tool execution where the AI generates code
+- Excellent for isolated generated code and safe snippet execution
 
 The Cloudflare Agents SDK's [Codemode](https://developers.cloudflare.com/agents/api-reference/codemode/) is built on Dynamic Worker Loaders, giving LLMs a "write code" tool that runs in isolated sandboxes. This pattern would work great here.
 
@@ -145,6 +149,18 @@ For the tool calling flow:
 3. Execute the tool (in a dynamic isolate for untrusted code)
 4. Return results as `tool-result` parts
 5. Continue the conversation with tool results in context
+
+Dynamic Worker Loaders should be treated as a hosted sandbox layer, not as a complete replacement for a real shell.
+
+### Local Companion
+
+If you want access to the user's actual local machine, the cleanest path is a separate companion process:
+
+- The companion exposes local tools such as Bash, Read, Write, Edit, and git operations
+- The Cloudflare session loop invokes those tools through MCP or another authenticated outbound bridge
+- The stock OpenCode TUI remains unchanged and continues to act as a remote UI
+
+This preserves one authoritative session loop in Cloudflare while still making local-machine execution possible as an opt-in mode.
 
 ### Git Operations
 
@@ -162,6 +178,8 @@ For heavier workloads or full shell environments:
 - **[Cloudflare Containers](https://developers.cloudflare.com/containers/)** - Run containers alongside your Worker
 - Spin up ephemeral containers for builds, tests, complex toolchains
 - Mount R2 storage as the filesystem
+
+Containers are the honest hosted answer for full shell workflows. Plain Workers plus Durable Objects should not be sold as a full Linux environment.
 
 ### Better Models
 
